@@ -1,24 +1,29 @@
-require('dotenv').config();
 const express = require('express');
-const connectDB = require('./config/database');
+const mongoose = require('mongoose');
+require('dotenv').config();
+
 const postRoutes = require('./routes/postRoutes');
 const commentRoutes = require('./routes/commentRoutes');
+const ApiError = require('./errors/ApiError');
+const errorHandler = require('./middlewares/errorHandler');
+
 const app = express();
-connectDB();
+
+// Middleware
 app.use(express.json());
+
 app.use('/api/posts', postRoutes);
 app.use('/api/comments', commentRoutes);
-app.get('/', (req, res) => {
- res.json({
- message: 'API для роботи з постами та коментарями',
- endpoints: {
- posts: '/api/posts',
- comments: '/api/comments'
- }
- });
+
+app.use((req, res, next) => {
+  next(ApiError.notFound('Route not found'));
 });
-app.use((req, res) => {
- res.status(404).json({ message: 'Маршрут не знайдено' });
-});
+
+app.use(errorHandler);
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Сервер запущено на порту ${PORT}`));
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => {
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  })
+  .catch(err => console.error('MongoDB connection error:', err));
